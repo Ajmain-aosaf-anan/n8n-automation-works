@@ -56,6 +56,7 @@ Set the folder ID in the `Google Drive` node:
 In the `If` node:
 ```js
 file_name === "Copy of Campaign data"
+```
 
 {
   "Campaign ID": "12345",
@@ -87,7 +88,6 @@ graph TD
     E --> F1[Extract from File]
     F1 --> G1[Embed via Ollama]
     G1 --> H1[Store in Supabase]
-
     Chat[Chat Trigger] --> Agent[LangChain AI Agent]
     Agent --> Model[Ollama Chat Model]
     Model --> Memory[Postgres Chat Memory]
