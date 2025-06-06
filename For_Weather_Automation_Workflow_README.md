@@ -71,10 +71,16 @@ If either API returns no data:
 - The workflow will still output N/A temperature values for the next three days at 00:00 and 09:00.
 
 ## ✅ Example Output (in Google Sheets)
-Date	API_1 (°C)	API_2 (°C)
-2025-06-01	30°	29°
-2025-06-02	31°	32°
-2025-06-03	N/A	27°
+| Date       | Dhaka forecast API_1 (°C) | Dhaka forecast API_2 (°C) |
+|------------|----------------------------|----------------------------|
+| 2025-06-01 | 30°                        | 30°                        |
+| 2025-06-02 | 31°                        | 32°                        |
+| 2025-06-03 | 34°                        | 33°                        |
+| 2025-06-04 | 31°                        | 32°                        |
+| 2025-06-05 | 32°                        | 31°                        |
+| 2025-06-06 | 32°                        | 31°                        |
+| 2025-06-07 | 36°                        | 32°                        |
+| 2025-06-08 | 36°                        | 32°                        |
 
 💡 Customization Tips
 - 🌍 Change city: Update the Timezone string in the Code node to extract another city's name.
