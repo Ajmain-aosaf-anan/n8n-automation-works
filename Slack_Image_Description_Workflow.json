@@ -1,0 +1,323 @@
+{
+  "name": "Slack Image Description Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "resource": "event",
+        "operation": "onMessage",
+        "eventType": "message.file_shared",
+        "channelId": {
+          "__rl": true,
+          "value": "your-slack-channel-id",
+          "mode": "list",
+          "cachedResultName": "Your Channel Name"
+        },
+        "options": {
+          "fileType": "image"
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [-2400, -860],
+      "id": "slack-trigger",
+      "name": "Slack Image Trigger",
+      "credentials": {
+        "slackApi": {
+          "id": "slack-cred-id",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.event.file.id }}",
+          "mode": "id"
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [-2180, -860],
+      "id": "slack-download",
+      "name": "Download Image",
+      "credentials": {
+        "slackApi": {
+          "id": "slack-cred-id",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $credentials.openaiApiKey }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "gpt-4-vision-preview"
+            },
+            {
+              "name": "messages",
+              "value": [
+                {
+                  "role": "user",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Describe the content of this image in detail."
+                    },
+                    {
+                      "type": "image_url",
+                      "image_url": {
+                        "url": "={{ 'data:image/jpeg;base64,' + $json.binary.data }}"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [-1960, -860],
+      "id": "image-description",
+      "name": "Describe Image",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "openai-cred-id",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "response-text",
+              "name": "response",
+              "value": "={{ $json.choices[0].message.content }}",
+              "type": "string"
+            },
+            {
+              "id": "channel-id",
+              "name": "channel",
+              "value": "={{ $json.event.channel }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-1740, -860],
+      "id": "format-response",
+      "name": "Format Response"
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "channel": "={{ $json.channel }}",
+        "text": "={{ $json.response }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [-1520, -860],
+      "id": "slack-response",
+      "name": "Send Response",
+      "credentials": {
+        "slackApi": {
+          "id": "slack-cred-id",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "sheetId": {
+          "__rl": true,
+          "value": "your-sheet-id",
+          "mode": "list",
+          "cachedResultName": "Audit Log"
+        },
+        "data": [
+          {
+            "column": "Timestamp",
+            "value": "={{ new Date().toISOString() }}"
+          },
+          {
+            "column": "Channel",
+            "value": "={{ $json.event.channel }}"
+          },
+          {
+            "column": "File ID",
+            "value": "={{ $json.event.file.id }}"
+          },
+          {
+            "column": "Description",
+            "value": "={{ $json.response }}"
+          }
+        ]
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 1,
+      "position": [-1520, -720],
+      "id": "log-to-sheet",
+      "name": "Log to Google Sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "sheets-cred-id",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {},
+          "conditions": [
+            {
+              "id": "error-check",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEqual"
+              }
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-1740, -720],
+      "id": "error-handler",
+      "name": "Error Handler"
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "channel": "={{ $json.event.channel }}",
+        "text": "Sorry, I couldn't process the image due to an error: {{ $json.error.message || 'Unknown error' }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [-1520, -580],
+      "id": "error-response",
+      "name": "Error Response",
+      "credentials": {
+        "slackApi": {
+          "id": "slack-cred-id",
+          "name": "Slack account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Slack Image Trigger": {
+      "main": [
+        [
+          {
+            "node": "Download Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Image": {
+      "main": [
+        [
+          {
+            "node": "Describe Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Describe Image": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Error Handler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Response": {
+      "main": [
+        [
+          {
+            "node": "Send Response",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log to Google Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Handler": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Error Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+},
+    "active": false,
+    "settings": {
+        "executionOrder": "v1",
+        "errorWorkflow": "error-workflow-id"
+    },
+    "versionId": "new-workflow-version-id",
+    "meta": {
+        "templateCredsSetupCompleted": true,
+        "instanceId": "new-workflow-instance-id"
+    },
+    "id": "new-workflow-id",
+    "tags": []
+}
