@@ -76,7 +76,7 @@ Date	API_1 (°C)	API_2 (°C)
 2025-06-02	31°	32°
 2025-06-03	N/A	27°
 
-##💡 Customization Tips
+💡 Customization Tips
 - 🌍 Change city: Update the Timezone string in the Code node to extract another city's name.
 - 📅 Change time windows: Modify logic in Code nodes to filter different times (e.g., 12:00, 18:00).
 - 📁 Change storage: Replace Google Sheets with Airtable, MySQL, or another destination node.
